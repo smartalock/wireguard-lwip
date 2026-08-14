@@ -14,11 +14,15 @@
 #define wireguard_blake2s(out,outlen,key,keylen,in,inlen) blake2s(out,outlen,key,keylen,in,inlen)
 
 // X25519 IMPLEMENTATION
+#if WG_LWIP_USE_CORTEX_M0_CRYPTO
+// Use the Cortex-M0 assembly implementation for X25519
+#include "crypto/cortex/scalarmult.h"
+#define wireguard_x25519(a,b,c)	crypto_scalarmult_curve25519(a,b,c)
+#else
+// Use the refence C implementation for X25519
 #include "crypto/refc/x25519.h"
 #define wireguard_x25519(a,b,c)	x25519(a,b,c,1)
-
-//#include "crypto/cortex/scalarmult.h"
-//#define wireguard_x25519(a,b,c)	crypto_scalarmult_curve25519(a,b,c)
+#endif
 
 // CHACHA20POLY1305 IMPLEMENTATION
 #include "crypto/refc/chacha20poly1305.h"
