@@ -70,6 +70,15 @@
 #define REJECT_AFTER_TIME			(180)
 #define REKEY_TIMEOUT				(5)
 #define KEEPALIVE_TIMEOUT			(10)
+// Matches WireGuard/wireguard-go's device/timers.go RekeyAttemptTime /
+// MaxTimerHandshakes. Without this cap, a peer with active=true but no
+// established session (unreachable, or has trimmed us from its netmap) gets a
+// handshake initiation retried forever at REKEY_TIMEOUT cadence - harmless on
+// a desktop/server, but a real per-attempt crypto cost (X25519 + a full
+// handshake message build) on a constrained embedded target, indefinitely,
+// for a peer that may never come back.
+#define REKEY_ATTEMPT_TIME			(90)
+#define MAX_TIMER_HANDSHAKES		((REKEY_ATTEMPT_TIME) / (REKEY_TIMEOUT) - 1)
 
 struct wireguard_keypair {
 	bool valid;
@@ -165,6 +174,11 @@ struct wireguard_peer {
 
 	// We set this flag on RX/TX of packets if we think that we should initiate a new handshake
 	bool send_handshake;
+
+	// Count of consecutive handshake initiations sent since the last completed
+	// session (or since active connect was requested), for the MAX_TIMER_HANDSHAKES
+	// give-up cap - see REKEY_ATTEMPT_TIME above.
+	uint16_t handshake_attempts;
 };
 
 struct wireguard_device {
