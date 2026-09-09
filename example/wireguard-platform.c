@@ -1,6 +1,7 @@
 #include "wireguard-platform.h"
 
 #include <stdlib.h>
+#include <sys/time.h>
 #include "crypto.h"
 #include "lwip/sys.h"
 
@@ -20,17 +21,39 @@ uint32_t wireguard_sys_now() {
 	return sys_now();
 }
 
-// CHANGE THIS TO GET THE ACTUAL UNIX TIMESTMP IN MILLIS - HANDSHAKES WILL FAIL IF THIS DOESN'T INCREASE EACH TIME CALLED
+// wireguard_tai64n_now() below uses gettimeofday(), which only returns a
+// meaningful value if *your* platform actually has a wall-clock time source
+// wired up (an RTC, SNTP, etc.) - on a target with none, it silently returns
+// something useless (typically the epoch, or uptime from an arbitrary
+// start), and you get exactly the "handshakes fail after every reboot" bug
+// this comment exists to prevent, just one layer further hidden than the
+// uptime bug it replaces. Whether that's actually true varies per target, so
+// it can't be checked at compile time - this define is you asserting it
+// rather than the build silently assuming it. Define
+// WIREGUARD_PLATFORM_TIME_IS_WALL_CLOCK once you've confirmed
+// gettimeofday() (or whatever you replace it with below) returns real
+// wall-clock time on your platform.
+#ifndef WIREGUARD_PLATFORM_TIME_IS_WALL_CLOCK
+#error "wireguard_tai64n_now() needs real wall-clock time, not uptime - see the comment above it. Define WIREGUARD_PLATFORM_TIME_IS_WALL_CLOCK once your gettimeofday() (or platform equivalent) is confirmed correct."
+#endif
+
 void wireguard_tai64n_now(uint8_t *output) {
 	// See https://cr.yp.to/libtai/tai64.html
 	// 64 bit seconds from 1970 = 8 bytes
 	// 32 bit nano seconds from current second
 
-	uint64_t millis = sys_now();
+	// Must be wall-clock time, not sys_now() uptime: handshakes are rejected
+	// unless this strictly increases from the last value a peer saw from us,
+	// and uptime resets near zero on every reboot while a still-running peer
+	// keeps its old high-water mark - silently breaking reconnection after a
+	// restart until uptime climbs back past it. See the
+	// WIREGUARD_PLATFORM_TIME_IS_WALL_CLOCK check above.
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
 
 	// Split into seconds offset + nanos
-	uint64_t seconds = 0x400000000000000aULL + (millis / 1000);
-	uint32_t nanos = (millis % 1000) * 1000;
+	uint64_t seconds = 0x400000000000000aULL + (uint64_t)tv.tv_sec;
+	uint32_t nanos = (uint32_t)tv.tv_usec * 1000;
 	U64TO8_BIG(output + 0, seconds);
 	U32TO8_BIG(output + 8, nanos);
 }
