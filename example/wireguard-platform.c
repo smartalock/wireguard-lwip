@@ -21,6 +21,22 @@ uint32_t wireguard_sys_now() {
 	return sys_now();
 }
 
+// wireguard_tai64n_now() below uses gettimeofday(), which only returns a
+// meaningful value if *your* platform actually has a wall-clock time source
+// wired up (an RTC, SNTP, etc.) - on a target with none, it silently returns
+// something useless (typically the epoch, or uptime from an arbitrary
+// start), and you get exactly the "handshakes fail after every reboot" bug
+// this comment exists to prevent, just one layer further hidden than the
+// uptime bug it replaces. Whether that's actually true varies per target, so
+// it can't be checked at compile time - this define is you asserting it
+// rather than the build silently assuming it. Define
+// WIREGUARD_PLATFORM_TIME_IS_WALL_CLOCK once you've confirmed
+// gettimeofday() (or whatever you replace it with below) returns real
+// wall-clock time on your platform.
+#ifndef WIREGUARD_PLATFORM_TIME_IS_WALL_CLOCK
+#error "wireguard_tai64n_now() needs real wall-clock time, not uptime - see the comment above it. Define WIREGUARD_PLATFORM_TIME_IS_WALL_CLOCK once your gettimeofday() (or platform equivalent) is confirmed correct."
+#endif
+
 void wireguard_tai64n_now(uint8_t *output) {
 	// See https://cr.yp.to/libtai/tai64.html
 	// 64 bit seconds from 1970 = 8 bytes
@@ -30,9 +46,8 @@ void wireguard_tai64n_now(uint8_t *output) {
 	// unless this strictly increases from the last value a peer saw from us,
 	// and uptime resets near zero on every reboot while a still-running peer
 	// keeps its old high-water mark - silently breaking reconnection after a
-	// restart until uptime climbs back past it. gettimeofday() needs your
-	// libc's time-of-day to actually be set (e.g. via SNTP) to be correct;
-	// until then this is no worse than the uptime it replaces.
+	// restart until uptime climbs back past it. See the
+	// WIREGUARD_PLATFORM_TIME_IS_WALL_CLOCK check above.
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 
