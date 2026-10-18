@@ -11,7 +11,7 @@ void wireguard_random_bytes(void *bytes, size_t size) {
 	int x;
 	uint8_t *out = (uint8_t *)bytes;
 	for (x=0; x < size; x++) {
-		out[x] = rand() % 0xFF;
+		out[x] = rand() % 0x100;
 	}
 }
 
