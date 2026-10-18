@@ -266,17 +266,20 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 	if (keypair) {
 		if (
 				(keypair->receiving_valid) &&
-				!wireguard_expired(keypair->keypair_millis, REJECT_AFTER_TIME) &&
-				(keypair->sending_counter < REJECT_AFTER_MESSAGES)
-
+				!wireguard_expired(keypair->keypair_millis, REJECT_AFTER_TIME)
 		) {
 
 			nonce = U8TO64_LITTLE(data_hdr->counter);
 			src = &data_hdr->enc_packet[0];
 			src_len = data_len;
 
-			// We don't know the unpadded size until we have decrypted the packet and validated/inspected the IP header
-			pbuf = pbuf_alloc(PBUF_TRANSPORT, src_len - WIREGUARD_AUTHTAG_LEN, PBUF_RAM);
+			pbuf = NULL;
+			// 6.2 Refuse to receive any more transport data messages after Reject-After-Messages
+			// The counter has not been authenticated yet so only drop this packet, don't destroy the keypair
+			if (nonce < REJECT_AFTER_MESSAGES) {
+				// We don't know the unpadded size until we have decrypted the packet and validated/inspected the IP header
+				pbuf = pbuf_alloc(PBUF_TRANSPORT, src_len - WIREGUARD_AUTHTAG_LEN, PBUF_RAM);
+			}
 			if (pbuf) {
 				// Decrypt the packet
 				memset(pbuf->payload, 0, pbuf->tot_len);
@@ -361,9 +364,9 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 
 
 		} else {
-			//After Reject-After-Messages transport data messages or after the current secure session is Reject- After-Time seconds old,
-			// whichever comes first, WireGuard will refuse to send or receive any more transport data messages using the current secure session,
-			// until a new secure session is created through the 1-RTT handshake
+			// After the current secure session is Reject-After-Time seconds old WireGuard will refuse to send or receive any more transport data
+			// messages using the current secure session, until a new secure session is created through the 1-RTT handshake
+			// Note: Reject-After-Messages is checked above against the received counter, which only drops the packet as it is not yet authenticated
 			keypair_destroy(keypair);
 		}
 
