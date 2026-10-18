@@ -44,6 +44,12 @@
 #define WIREGUARDIF_DEFAULT_PORT		(51820)
 #define WIREGUARDIF_KEEPALIVE_DEFAULT	(0xFFFF)
 
+// Length of a tai64n handshake timestamp in bytes
+#define WIREGUARDIF_TIMESTAMP_LEN		(12)
+
+// Callback function to allow system to save remote peers latest handshake timestamp
+typedef void (*wireguardif_initiation_accepted_fn)(struct netif *netif, u8_t peer_index);
+
 struct wireguardif_init_data {
 	// Required: the private key of this WireGuard network interface
 	const char *private_key;
@@ -57,8 +63,12 @@ struct wireguardif_peer {
 	const char *public_key;
 	// Optional pre-shared key (32 bytes) - make sure this is NULL if not to be used
 	const uint8_t *preshared_key;
-	// tai64n of largest timestamp we have seen during handshake to avoid replays
-	uint8_t greatest_timestamp[12];
+	// tai64n of largest timestamp we have seen during handshake to avoid replays - restore the previously saved value (all zero if none)
+	// If building a system where the clock is accurate this can be pre-initialised as NOW - acceptable_clock_drift
+	uint8_t greatest_timestamp[WIREGUARDIF_TIMESTAMP_LEN];
+	// Called each time a handshake initiation from this peer is accepted so greatest_timestamp above can be saved (NULL if not used)
+	// Note this is called upto ~every 2mins for remote initiations so be mindful of wear leveling if saving the value in flash
+	wireguardif_initiation_accepted_fn remote_initiation_accepted;
 
 	// Allowed ip/netmask (can add additional later but at least one is required)
 	ip_addr_t allowed_ip;
@@ -73,14 +83,14 @@ struct wireguardif_peer {
 #define WIREGUARDIF_INVALID_INDEX (0xFF)
 
 /* static struct netif wg_netif_struct = {0};
- * struct wireguard_interface wg;
+ * struct wireguardif_init_data wg = {0};
  * wg.private_key = "abcdefxxx..xxxxx=";
  * wg.listen_port = 51820;
  * wg.bind_netif = NULL; // Pass netif to listen on, NULL for all interfaces
  *
  * netif = netif_add(&netif_struct, &ipaddr, &netmask, &gateway, &wg, &wireguardif_init, &ip_input);
  *
- * netif_set_up(wg_net);
+ * netif_set_up(netif);
  *
  * struct wireguardif_peer peer;
  * wireguardif_peer_init(&peer);
@@ -98,7 +108,7 @@ struct wireguardif_peer {
  *
  * if ((wireguard_peer_index != WIREGUARDIF_INVALID_INDEX) && !ip_addr_isany(&peer.endpoint_ip)) {
  *   // Start outbound connection to peer
- *   wireguardif_connect(wg_net, wireguard_peer_index);
+ *   wireguardif_connect(netif, wireguard_peer_index);
  * }
  *
  */
@@ -127,5 +137,8 @@ err_t wireguardif_disconnect(struct netif *netif, u8_t peer_index);
 
 // Is the given peer "up"? A peer is up if it has a valid session key it can communicate with
 err_t wireguardif_peer_is_up(struct netif *netif, u8_t peer_index, ip_addr_t *current_ip, u16_t *current_port);
+
+// Get the greatest handshake timestamp received from the given peer (WIREGUARDIF_TIMESTAMP_LEN bytes)
+err_t wireguardif_peer_greatest_timestamp(struct netif *netif, u8_t peer_index, uint8_t *timestamp, size_t max_len);
 
 #endif /* _WIREGUARDIF_H_ */

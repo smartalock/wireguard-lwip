@@ -563,6 +563,11 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 
 				peer = wireguard_process_initiation_message(device, msg_initiation);
 				if (peer) {
+					// 5.1 The initiation was accepted so the peer's greatest timestamp has increased - let the application persist it
+					if (peer->remote_initiation_accepted) {
+						peer->remote_initiation_accepted(device->netif, wireguard_peer_index(device, peer));
+					}
+
 					// Update the peer location
 					update_peer_addr(peer, addr, port);
 
@@ -703,6 +708,18 @@ err_t wireguardif_peer_is_up(struct netif *netif, u8_t peer_index, ip_addr_t *cu
 	return result;
 }
 
+err_t wireguardif_peer_greatest_timestamp(struct netif *netif, u8_t peer_index, uint8_t *timestamp, size_t max_len) {
+	struct wireguard_peer *peer;
+	err_t result = ERR_ARG;
+	if (timestamp && (max_len >= WIREGUARD_TAI64N_LEN)) {
+		result = wireguardif_lookup_peer(netif, peer_index, &peer);
+		if (result == ERR_OK) {
+			memcpy(timestamp, peer->greatest_timestamp, WIREGUARD_TAI64N_LEN);
+		}
+	}
+	return result;
+}
+
 err_t wireguardif_remove_peer(struct netif *netif, u8_t peer_index) {
 	struct wireguard_peer *peer;
 	err_t result = wireguardif_lookup_peer(netif, peer_index, &peer);
@@ -759,6 +776,7 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 					}
 					peer_add_ip(peer, p->allowed_ip, p->allowed_mask);
 					memcpy(peer->greatest_timestamp, p->greatest_timestamp, sizeof(peer->greatest_timestamp));
+					peer->remote_initiation_accepted = p->remote_initiation_accepted;
 
 					result = ERR_OK;
 				} else {

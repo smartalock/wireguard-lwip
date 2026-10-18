@@ -637,7 +637,6 @@ struct wireguard_peer *wireguard_process_initiation_message(struct wireguard_dev
 						peer->last_initiation_rx = now;
 						if (memcmp(t, peer->greatest_timestamp, WIREGUARD_TAI64N_LEN) > 0) {
 							memcpy(peer->greatest_timestamp, t, WIREGUARD_TAI64N_LEN);
-							// TODO: Need to notify if the higher layers want to persist latest timestamp/nonce somewhere
 						}
 						memcpy(handshake->remote_ephemeral, e, WIREGUARD_PUBLIC_KEY_LEN);
 						memcpy(handshake->hash, hash, WIREGUARD_HASH_LEN);
