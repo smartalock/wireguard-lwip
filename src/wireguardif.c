@@ -282,30 +282,34 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 				memset(pbuf->payload, 0, pbuf->tot_len);
 				if (wireguard_decrypt_packet(pbuf->payload, src, src_len, nonce, keypair)) {
 
-					// 3. Since the packet has authenticated correctly, the source IP of the outer UDP/IP packet is used to update the endpoint for peer TrMv...WXX0.
-					// Update the peer location
-					update_peer_addr(peer, addr, port);
+					// 5.4.6 The counter is checked against the sliding window only after having verified the authentication tag
+					// This must happen before any peer state is updated, and applies to keep-alive packets too (6.5)
+					if (wireguard_check_replay(keypair, nonce)) {
 
-					now = wireguard_sys_now();
-					keypair->last_rx = now;
-					peer->last_rx = now;
+						// 3. Since the packet has authenticated correctly, the source IP of the outer UDP/IP packet is used to update the endpoint for peer TrMv...WXX0.
+						// Update the peer location
+						update_peer_addr(peer, addr, port);
 
-					// Might need to shuffle next key --> current keypair
-					keypair_update(peer, keypair);
+						now = wireguard_sys_now();
+						keypair->last_rx = now;
+						peer->last_rx = now;
 
-					// Check to see if we should rekey
-					if (keypair->initiator && wireguard_expired(keypair->keypair_millis, REJECT_AFTER_TIME - peer->keepalive_interval - REKEY_TIMEOUT)) {
-						peer->send_handshake = true;
-					}
+						// Check to see if we should rekey
+						if (keypair->initiator && wireguard_expired(keypair->keypair_millis, REJECT_AFTER_TIME - peer->keepalive_interval - REKEY_TIMEOUT)) {
+							peer->send_handshake = true;
+						}
 
-					// Make sure that link is reported as up
-					netif_set_link_up(device->netif);
+						// Might need to shuffle next key --> current keypair
+						// Note: if this was the next keypair it has now been moved to current and keypair must not be used after this
+						keypair_update(peer, keypair);
+						keypair = NULL;
 
-					if (pbuf->tot_len > 0) {
-						//4a. Once the packet payload is decrypted, the interface has a plaintext packet. If this is not an IP packet, it is dropped.
-						iphdr = (struct ip_hdr *)pbuf->payload;
-						// Check for packet replay / dupes
-						if (wireguard_check_replay(keypair, nonce)) {
+						// Make sure that link is reported as up
+						netif_set_link_up(device->netif);
+
+						if (pbuf->tot_len > 0) {
+							//4a. Once the packet payload is decrypted, the interface has a plaintext packet. If this is not an IP packet, it is dropped.
+							iphdr = (struct ip_hdr *)pbuf->payload;
 
 							// 4b. Otherwise, WireGuard checks to see if the source IP address of the plaintext inner-packet routes correspondingly in the cryptokey routing table
 							// Also check packet length!
@@ -343,10 +347,10 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 								// IP header is corrupt or lied about packet size
 							}
 						} else {
-							// This is a duplicate packet / replayed / too far out of order
+							// This was a keep-alive packet
 						}
 					} else {
-						// This was a keep-alive packet
+						// This is a duplicate packet / replayed / too far out of order
 					}
 				}
 
