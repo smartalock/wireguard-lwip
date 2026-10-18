@@ -25,7 +25,7 @@ The code is split into four main portions
 
 The supplied cryptographic routines are written entirely in C and are not optimised for any particular platform. These work and use little memory but will probably be slow on your platform.
 
-You probably want to swap out the suplied versions for optimised C or assembly versions or those available throught the O/S or crypto libraries on your platform. Simply edit the crypto.h header file to point at the routines you want to use.
+You will want to swap out the suplied versions for optimised C or assembly versions or those available through the O/S or crypto libraries on your platform. Simply edit the crypto.h header file to point at the routines you want to use.
 
 The crypto routines supplied are:
 - BLAKE2S - adapted from the implementation in the RFC itself at https://tools.ietf.org/html/rfc7693
@@ -38,11 +38,11 @@ The crypto routines supplied are:
 
 # Integrating into your platform
 
-You will need to implement a platform file that provides four functions
-- a monotonic counter used for calculating time differences - e.g. sys_now() from lwIP
-- a tain64n timestamp function, although there are workarounds if you don't have access to a realtime clock
-- an indication of whether the system is currently under load and should generate cookie reply messages
-- a good random number generator
+You will need to implement a platform file that provides four functions (see wireguard-platform.h):
+- wireguard_sys_now() - a monotonic counter used for calculating time differences - e.g. sys_now() from lwIP
+- wireguard_tai64n_now() - a tai64n timestamp function returning the current timestamp. There are workarounds if your platform doesn't have access to a realtime clock or accurate time such as using a 32-bit boot counter + 64 bit uptime offset
+- wireguard_is_under_load() - an indication of whether the system is currently under load and should generate cookie reply messages
+- wireguard_random_bytes() - a good random number generator that is able to generate random data suitable to be used as crypto keys. The example uses rand() which on POSIX systems is *not* a good choice, it is intended that you use the hardware peripheral on your platform to generate random data
 
 # lwIP Code Example
 (note error checking omitted)
