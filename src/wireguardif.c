@@ -331,10 +331,14 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 							}
 #endif /* LWIP_IPV4 */
 #if LWIP_IPV6
-							if (IPH_V(iphdr) == 6) {
-								// TODO: IPV6 support for route filtering
-								header_len = PP_NTOHS(IPH_LEN(iphdr));
-								src_ok = true;
+							if ((IP_HDR_GET_VERSION(pbuf->payload) == 6) && (pbuf->tot_len >= IP6_HLEN)) {
+								struct ip6_hdr *ip6hdr = (struct ip6_hdr *)pbuf->payload;
+								ip_addr_copy_from_ip6_packed(src_ip, ip6hdr->src);
+								// match src_ip against the peer's IPv6 allowed prefixes, then:
+								header_len = IP6H_PLEN(ip6hdr) + IP6_HLEN;
+
+								// TODO: IPV6 support for route filtering - drop everything until support is added
+								src_ok = false;
 							}
 #endif /* LWIP_IPV6 */
 							if (header_len <= pbuf->tot_len) {
@@ -433,15 +437,16 @@ static size_t get_source_addr_port(const ip_addr_t *addr, u16_t port, uint8_t *b
 	}
 #endif
 #if LWIP_IPV6
-	if (IP_IS_V4(addr) && (buflen >= 16)) {
-		U16TO8_BIG(buf + result + 0, IP6_ADDR_BLOCK1(addr));
-		U16TO8_BIG(buf + result + 2, IP6_ADDR_BLOCK2(addr));
-		U16TO8_BIG(buf + result + 4, IP6_ADDR_BLOCK3(addr));
-		U16TO8_BIG(buf + result + 6, IP6_ADDR_BLOCK4(addr));
-		U16TO8_BIG(buf + result + 8, IP6_ADDR_BLOCK5(addr));
-		U16TO8_BIG(buf + result + 10, IP6_ADDR_BLOCK6(addr));
-		U16TO8_BIG(buf + result + 12, IP6_ADDR_BLOCK7(addr));
-		U16TO8_BIG(buf + result + 14, IP6_ADDR_BLOCK8(addr));
+	if (IP_IS_V6(addr) && (buflen >= result + 16)) {
+		const ip6_addr_t *addr6 = ip_2_ip6(addr);
+		U16TO8_BIG(buf + result + 0, IP6_ADDR_BLOCK1(addr6));
+		U16TO8_BIG(buf + result + 2, IP6_ADDR_BLOCK2(addr6));
+		U16TO8_BIG(buf + result + 4, IP6_ADDR_BLOCK3(addr6));
+		U16TO8_BIG(buf + result + 6, IP6_ADDR_BLOCK4(addr6));
+		U16TO8_BIG(buf + result + 8, IP6_ADDR_BLOCK5(addr6));
+		U16TO8_BIG(buf + result + 10, IP6_ADDR_BLOCK6(addr6));
+		U16TO8_BIG(buf + result + 12, IP6_ADDR_BLOCK7(addr6));
+		U16TO8_BIG(buf + result + 14, IP6_ADDR_BLOCK8(addr6));
 		result += 16;
 	}
 #endif
