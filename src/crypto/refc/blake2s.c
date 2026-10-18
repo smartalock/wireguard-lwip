@@ -70,6 +70,9 @@ static void blake2s_compress(blake2s_ctx *ctx, int last)
 
 	for( i = 0; i < 8; ++i )
 		ctx->h[i] ^= v[i] ^ v[i + 8];
+
+	crypto_zero(v, sizeof(v));
+	crypto_zero(m, sizeof(m));
 }
 
 // Initialize the hashing context "ctx" with optional key "key".
@@ -152,5 +155,7 @@ int blake2s(void *out, size_t outlen,
 	blake2s_update(&ctx, in, inlen);
 	blake2s_final(&ctx, out);
 
+	// The context holds the output and the last input block (which may be key material)
+	crypto_zero(&ctx, sizeof(ctx));
 	return 0;
 }

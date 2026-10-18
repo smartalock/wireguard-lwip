@@ -967,6 +967,9 @@ err_t wireguardif_init(struct netif *netif) {
 	} else {
 		result = ERR_ARG;
 	}
+
+	// Wipe the decoded private key - a copy is kept in the device structure
+	crypto_zero(private_key, sizeof(private_key));
 	return result;
 }
 

@@ -158,6 +158,10 @@ bool chacha20poly1305_decrypt(uint8_t *dst, const uint8_t *src, size_t src_len, 
 			result = true;
 		}
 	}
+
+	crypto_zero(&chacha20_state, sizeof(chacha20_state));
+	crypto_zero(&mac, sizeof(mac));
+	crypto_zero(&block, sizeof(block));
 	return result;
 }
 
