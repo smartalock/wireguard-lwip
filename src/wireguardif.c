@@ -317,7 +317,8 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 							// 4b. Otherwise, WireGuard checks to see if the source IP address of the plaintext inner-packet routes correspondingly in the cryptokey routing table
 							// Also check packet length!
 #if LWIP_IPV4
-							if (IPH_V(iphdr) == 4) {
+							// The plaintext length is set by the (authenticated) peer and need not be padded so make sure there is a full header before reading it
+							if ((IPH_V(iphdr) == 4) && (pbuf->tot_len >= IP_HLEN)) {
 								ip_addr_copy_from_ip4(src_ip, iphdr->src);
 								for (x=0; x < WIREGUARD_MAX_SRC_IPS; x++) {
 									if (peer->allowed_source_ips[x].valid) {
