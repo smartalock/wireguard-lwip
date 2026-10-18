@@ -395,6 +395,10 @@ static uint32_t wireguard_generate_unique_index(struct wireguard_device *device)
 					(result == peer->prev_keypair.local_index) ||
 					(result == peer->next_keypair.local_index) ||
 					(result == peer->handshake.local_index);
+			if (existing) {
+				// Exit for loop - this number is used, we need to generate a new one
+				break;
+			}
 
 		}
 	} while (existing);
