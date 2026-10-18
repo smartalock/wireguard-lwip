@@ -45,8 +45,6 @@
 #include "wireguard.h"
 #include "crypto.h"
 
-#include <stdio.h> // TODO: Remove
-
 #define WIREGUARDIF_TIMER_MSECS 400
 
 
@@ -100,6 +98,8 @@ static err_t wireguardif_output_to_peer(struct netif *netif, struct pbuf *q, con
 	uint8_t *dst;
 	uint32_t now;
 	struct wireguard_keypair *keypair = &peer->curr_keypair;
+
+	LWIP_UNUSED_ARG(ipaddr);
 
 	// Note: We may not be able to use the current keypair if we haven't received data, may need to resort to using previous keypair
 	if (keypair->valid && (!keypair->initiator) && (keypair->last_rx == 0)) {
@@ -540,6 +540,7 @@ static bool wireguardif_check_response_message(struct wireguard_device *device, 
 void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port) {
 	LWIP_ASSERT("wireguardif_network_rx: invalid arg", arg != NULL);
 	LWIP_ASSERT("wireguardif_network_rx: invalid pbuf", p != NULL);
+	LWIP_UNUSED_ARG(pcb);
 	// We have received a packet from the base_netif to our UDP port - process this as a possible Wireguard packet
 	struct wireguard_device *device = (struct wireguard_device *)arg;
 	struct wireguard_peer *peer;
@@ -735,8 +736,6 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 	size_t public_key_len = sizeof(public_key);
 	struct wireguard_peer *peer = NULL;
 
-	uint32_t t1 = wireguard_sys_now();
-
 	if (wireguard_base64_decode(p->public_key, public_key, &public_key_len)
 			&& (public_key_len == WIREGUARD_PUBLIC_KEY_LEN)) {
 
@@ -774,9 +773,6 @@ err_t wireguardif_add_peer(struct netif *netif, struct wireguardif_peer *p, u8_t
 	} else {
 		result = ERR_ARG;
 	}
-
-	uint32_t t2 = wireguard_sys_now();
-	printf("Adding peer took %ldms\r\n", (t2-t1));
 
 	if (peer_index) {
 		if (peer) {
@@ -919,10 +915,7 @@ err_t wireguardif_init(struct netif *netif) {
 						}
 						device->udp_pcb = udp;
 						// Per-wireguard netif/device setup
-						uint32_t t1 = wireguard_sys_now();
 						if (wireguard_device_init(device, private_key)) {
-							uint32_t t2 = wireguard_sys_now();
-							printf("Device init took %ldms\r\n", (t2-t1));
 
 #if LWIP_CHECKSUM_CTRL_PER_NETIF
 							NETIF_SET_CHECKSUM_CTRL(netif, NETIF_CHECKSUM_ENABLE_ALL);
