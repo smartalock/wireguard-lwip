@@ -159,6 +159,9 @@ struct wireguard_peer {
 	// The last time we sent an initiation message to this peer
 	uint32_t last_initiation_tx;
 
+	// The time the last new secure session was created, 0 if none since the peer was last reset
+	uint32_t last_session_millis;
+
 	// last_tx and last_rx of data packets
 	uint32_t last_tx;
 	uint32_t last_rx;

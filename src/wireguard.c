@@ -497,7 +497,8 @@ void wireguard_start_session(struct wireguard_peer *peer, bool initiator) {
 	new_keypair.local_index = handshake->local_index;
 	new_keypair.remote_index = handshake->remote_index;
 
-	new_keypair.keypair_millis = wireguard_sys_now();
+	peer->last_session_millis = wireguard_sys_now();
+	new_keypair.keypair_millis = peer->last_session_millis;
 	new_keypair.sending_valid = true;
 	new_keypair.receiving_valid = true;
 

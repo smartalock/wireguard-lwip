@@ -810,11 +810,11 @@ static bool should_send_keepalive(struct wireguard_peer *peer) {
 	return result;
 }
 
-static bool should_destroy_current_keypair(struct wireguard_peer *peer) {
+static bool should_destroy_keypair(struct wireguard_keypair *keypair) {
 	bool result = false;
-	if (peer->curr_keypair.valid &&
-			(wireguard_expired(peer->curr_keypair.keypair_millis, REJECT_AFTER_TIME) ||
-			(peer->curr_keypair.sending_counter >= REJECT_AFTER_MESSAGES))
+	if (keypair->valid &&
+			(wireguard_expired(keypair->keypair_millis, REJECT_AFTER_TIME) ||
+			(keypair->sending_counter >= REJECT_AFTER_MESSAGES))
 		) {
 		result = true;
 	}
@@ -823,7 +823,9 @@ static bool should_destroy_current_keypair(struct wireguard_peer *peer) {
 
 static bool should_reset_peer(struct wireguard_peer *peer) {
 	bool result = false;
-	if (peer->curr_keypair.valid && (wireguard_expired(peer->curr_keypair.keypair_millis, REJECT_AFTER_TIME * 3))) {
+	// 6.3 If no new secure session is created after (Reject-After-Time * 3) seconds, the current secure session, the previous secure session,
+	// and potentially the next secure session are discarded and zeroed out, in addition to any possible partially-completed handshake states and ephemeral keys
+	if ((peer->last_session_millis != 0) && wireguard_expired(peer->last_session_millis, REJECT_AFTER_TIME * 3)) {
 		result = true;
 	}
 	return result;
@@ -847,15 +849,23 @@ static void wireguardif_tmr(void *arg) {
 				keypair_destroy(&peer->next_keypair);
 				keypair_destroy(&peer->curr_keypair);
 				keypair_destroy(&peer->prev_keypair);
-				// TODO: Also destroy handshake?
+				crypto_zero(&peer->handshake, sizeof(struct wireguard_handshake));
+				peer->handshake.valid = false;
+				peer->last_session_millis = 0;
 
 				// Revert back to default IP/port if these were altered
 				peer->ip = peer->connect_ip;
 				peer->port = peer->connect_port;
 			}
-			if (should_destroy_current_keypair(peer)) {
-				// Destroy current keypair
+			// Destroy any keypairs that can no longer be used to send or receive
+			if (should_destroy_keypair(&peer->curr_keypair)) {
 				keypair_destroy(&peer->curr_keypair);
+			}
+			if (should_destroy_keypair(&peer->prev_keypair)) {
+				keypair_destroy(&peer->prev_keypair);
+			}
+			if (should_destroy_keypair(&peer->next_keypair)) {
+				keypair_destroy(&peer->next_keypair);
 			}
 			if (should_send_keepalive(peer)) {
 				wireguardif_send_keepalive(device, peer);
