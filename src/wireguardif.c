@@ -586,12 +586,8 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 			msg_cookie = (struct message_cookie_reply *)data;
 			peer = peer_lookup_by_handshake(device, msg_cookie->receiver);
 			if (peer) {
-				if (wireguard_process_cookie_message(device, peer, msg_cookie)) {
-					// Update the peer location
-					update_peer_addr(peer, addr, port);
-
-					// Don't send anything out - we stay quiet until the next initiation message
-				}
+				// Process the cookie message but don't send anything out until next initiation message
+				wireguard_process_cookie_message(device, peer, msg_cookie);
 			}
 			break;
 
