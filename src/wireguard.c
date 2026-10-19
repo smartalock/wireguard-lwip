@@ -1050,8 +1050,8 @@ bool wireguard_base64_decode(const char *str, uint8_t *out, size_t *outlen) {
 			// This is '=' padding at end of string - decrease the number of bytes to write
 			bits = 0;
 			byte_count--;
-			if (byte_count < 0) {
-				// Too much padding!
+			if (byte_count < 1) {
+				// Too much padding! A 4 character block can have at most two '=' and always decodes to at least one byte
 				result = false;
 				break;
 			}
