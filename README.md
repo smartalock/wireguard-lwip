@@ -53,6 +53,7 @@ WireGuard protects against replayed handshake initiations using the TAI64N times
 
 To persist the received timestamp:
 - set wireguardif_peer.remote_initiation_accepted to a callback before adding the peer - it is called each time a handshake initiation from that peer is accepted (typically every 2 minutes while traffic is flowing), call wireguardif_peer_greatest_timestamp() and save the result into non-volatile memory against this peer to be used at re-initialisation
+- the callback runs in the lwIP thread (tcpip context) after the handshake response has been sent - don't block here, copy the value and defer any flash write or other storage to a separate task, otherwise the network stack will stall while it completes
 - wireguardif_peer_greatest_timestamp() can also be used to read the value at any other time, e.g. to save peer's timestamp before a controlled shutdown
 
 Alternatively, if your device and its peers have accurate real time clocks (Linux peers use real time) you can avoid persisting anything by setting greatest_timestamp to the current TAI64N time minus an allowable amount for clock skew when adding the peer.
@@ -78,7 +79,7 @@ Alternatively, if your device and its peers have accurate real time clocks (Linu
     	uint8_t timestamp[WIREGUARDIF_TIMESTAMP_LEN];
     	if (peer_index == wireguard_peer_index) {
     		if (wireguardif_peer_greatest_timestamp(netif, peer_index, timestamp, sizeof(timestamp)) == ERR_OK) {
-    			// Remember for next reboot
+    			// Remember for next reboot - save_peer_timestamp() must not block, e.g. it copies the value and signals your own task to write it to flash
     			save_peer_timestamp(peer_public_key, timestamp);
     		}
     	}

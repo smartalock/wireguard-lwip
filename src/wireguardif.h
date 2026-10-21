@@ -48,6 +48,7 @@
 #define WIREGUARDIF_TIMESTAMP_LEN		(12)
 
 // Callback function to allow system to save remote peers latest handshake timestamp
+// Called from the lwIP thread (tcpip context) - don't block here. Read the value with wireguardif_peer_greatest_timestamp() and defer any processing
 typedef void (*wireguardif_initiation_accepted_fn)(struct netif *netif, u8_t peer_index);
 
 struct wireguardif_init_data {
@@ -68,6 +69,7 @@ struct wireguardif_peer {
 	uint8_t greatest_timestamp[WIREGUARDIF_TIMESTAMP_LEN];
 	// Called each time a handshake initiation from this peer is accepted so greatest_timestamp above can be saved (NULL if not used)
 	// Note this is called upto ~every 2mins for remote initiations so be mindful of wear leveling if saving the value in flash
+	// It runs in the lwIP thread so must not block - defer the flash write to your own task
 	wireguardif_initiation_accepted_fn remote_initiation_accepted;
 
 	// Allowed ip/netmask (can add additional later but at least one is required)

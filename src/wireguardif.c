@@ -569,16 +569,17 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 
 				peer = wireguard_process_initiation_message(device, msg_initiation);
 				if (peer) {
-					// 5.1 The initiation was accepted so the peer's greatest timestamp has increased - let the application persist it
-					if (peer->remote_initiation_accepted) {
-						peer->remote_initiation_accepted(device->netif, wireguard_peer_index(device, peer));
-					}
-
 					// Update the peer location
 					update_peer_addr(peer, addr, port);
 
 					// Send back a handshake response
 					wireguardif_send_handshake_response(device, peer);
+
+					// 5.1 The initiation was accepted so the peer's greatest timestamp has increased - let the application persist it
+					// Called after the response has been sent so a slow callback doesn't delay the handshake. peer must not be used after this
+					if (peer->remote_initiation_accepted) {
+						peer->remote_initiation_accepted(device->netif, wireguard_peer_index(device, peer));
+					}
 				}
 			}
 			break;
