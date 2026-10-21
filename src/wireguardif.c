@@ -433,7 +433,7 @@ static size_t get_source_addr_port(const ip_addr_t *addr, u16_t port, uint8_t *b
 
 #if LWIP_IPV4
 	if (IP_IS_V4(addr) && (buflen >= 4)) {
-		U32TO8_BIG(buf + result, PP_NTOHL(ip4_addr_get_u32(addr)));
+		U32TO8_BIG(buf + result, PP_NTOHL(ip4_addr_get_u32(ip_2_ip4(addr))));
 		result += 4;
 	}
 #endif
