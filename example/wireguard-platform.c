@@ -11,7 +11,7 @@
 
 // DO NOT USE THIS FUNCTION - IMPLEMENT A BETTER RANDOM BYTE GENERATOR IN YOUR IMPLEMENTATION
 void wireguard_random_bytes(void *bytes, size_t size) {
-	int x;
+	size_t x;
 	uint8_t *out = (uint8_t *)bytes;
 	for (x=0; x < size; x++) {
 		out[x] = rand() % 0x100;
@@ -33,7 +33,7 @@ void wireguard_tai64n_now(uint8_t *output) {
 
 	// Split into seconds offset + nanos
 	uint64_t seconds = 0x400000000000000aULL + (millis / 1000);
-	uint32_t nanos = (millis % 1000) * 1000;
+	uint32_t nanos = (millis % 1000) * 1000000;
 	U64TO8_BIG(output + 0, seconds);
 	U32TO8_BIG(output + 8, nanos);
 
