@@ -142,6 +142,9 @@ The library doesn't currently support IPv6 (neither IPv6 endpoints nor IPv6 traf
 
 Decrypted IPv6 packets received through the tunnel are dropped until IPv6 support is complete.
 
+# Peer reset after 9 minutes without a session
+All session keys and handshake state are wiped as per the WireGuard whitepaper (§6.3). For a peer with a configured endpoint, the endpoint also goes back to the configured address. A peer without a configured endpoint keeps the address it last learned.
+
 # More Information
 
 WireGuard&reg; was created and developed by Jason A. Donenfeld. "WireGuard" and the "WireGuard" logo are registered trademarks of Jason A. Donenfeld. See https://www.wireguard.com/ for more information

@@ -878,9 +878,11 @@ static void wireguardif_tmr(void *arg) {
 				peer->handshake.valid = false;
 				peer->last_session_millis = 0;
 
-				// Revert back to default IP/port if these were altered
-				peer->ip = peer->connect_ip;
-				peer->port = peer->connect_port;
+				// Revert back to the configured IP/port if these were altered - if there is no configured endpoint keep the learned one
+				if (!ip_addr_isany(&peer->connect_ip) && (peer->connect_port != 0)) {
+					peer->ip = peer->connect_ip;
+					peer->port = peer->connect_port;
+				}
 			}
 			// Destroy any keypairs that can no longer be used to send or receive
 			if (should_destroy_keypair(&peer->curr_keypair)) {
