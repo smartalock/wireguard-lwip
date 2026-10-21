@@ -67,10 +67,6 @@ struct wireguardif_peer {
 	// tai64n of largest timestamp we have seen during handshake to avoid replays - restore the previously saved value (all zero if none)
 	// If building a system where the clock is accurate this can be pre-initialised as NOW - acceptable_clock_drift
 	uint8_t greatest_timestamp[WIREGUARDIF_TIMESTAMP_LEN];
-	// Called each time a handshake initiation from this peer is accepted so greatest_timestamp above can be saved (NULL if not used)
-	// Note this is called upto ~every 2mins for remote initiations so be mindful of wear leveling if saving the value in flash
-	// It runs in the lwIP thread so must not block - defer the flash write to your own task
-	wireguardif_initiation_accepted_fn remote_initiation_accepted;
 
 	// Allowed ip/netmask (can add additional later but at least one is required)
 	ip_addr_t allowed_ip;
@@ -80,6 +76,11 @@ struct wireguardif_peer {
 	ip_addr_t endpoint_ip;
 	u16_t endport_port;
 	u16_t keep_alive;
+
+	// Optional: called each time a handshake initiation from this peer is accepted so greatest_timestamp can be saved (NULL if not used)
+	// Note this is called upto ~every 2mins for remote initiations so be mindful of wear leveling if saving the value in flash
+	// It runs in the lwIP thread so must not block - defer the flash write to your own task
+	wireguardif_initiation_accepted_fn remote_initiation_accepted;
 };
 
 #define WIREGUARDIF_INVALID_INDEX (0xFF)
