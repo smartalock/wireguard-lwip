@@ -258,7 +258,7 @@ static void wireguardif_process_data_message(struct wireguard_device *device, st
 	bool src_ok = false;
 	int x;
 	uint32_t now;
-	uint16_t header_len = 0xFFFF;
+	uint32_t header_len = UINT32_MAX;
 	uint32_t idx = data_hdr->receiver;
 
 	keypair = get_peer_keypair_for_idx(peer, idx);
