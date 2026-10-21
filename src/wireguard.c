@@ -751,6 +751,7 @@ bool wireguard_process_handshake_response(struct wireguard_device *device, struc
 	crypto_zero(ephemeral_private, sizeof(ephemeral_private));
 	crypto_zero(preshared_key, sizeof(preshared_key));
 	crypto_zero(tau, sizeof(tau));
+	crypto_zero(dh_calculation, sizeof(dh_calculation));
 
 	return result;
 }
