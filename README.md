@@ -57,6 +57,7 @@ To persist the received timestamp:
 - set wireguardif_peer.remote_initiation_accepted to a callback before adding the peer - it is called each time a handshake initiation from that peer is accepted (typically every 2 minutes while traffic is flowing), call wireguardif_peer_greatest_timestamp() and save the result into non-volatile memory against this peer to be used at re-initialisation
 - the callback runs in the lwIP thread (tcpip context) after the handshake response has been sent - don't block here, copy the value and defer any flash write or other storage to a separate task, otherwise the network stack will stall while it completes
 - wireguardif_peer_greatest_timestamp() can also be used to read the value at any other time, e.g. to save peer's timestamp before a controlled shutdown
+- only initiations older than the saved timestamp are protected after a restart - if you save less often to limit flash wear, any initiation accepted since the last save could be replayed once after a restart
 
 Alternatively, if your device and its peers have accurate real time clocks (Linux peers use real time) you can avoid persisting anything by setting greatest_timestamp to the current TAI64N time minus an allowable amount for clock skew when adding the peer.
 
@@ -134,6 +135,9 @@ Alternatively, if your device and its peers have accurate real time clocks (Linu
     }
 
 
+# lwIP Locking
+The library doesn't lock its state. Call wireguardif_peer_greatest_timestamp() and the other wireguardif_ functions from the lwIP thread, or from another thread while holding the lwIP core lock (`LOCK_TCPIP_CORE()` / `UNLOCK_TCPIP_CORE()`, with `LWIP_TCPIP_CORE_LOCKING` enabled) or by scheduling the call with `tcpip_callback()`. Note that ehe remote_initiation_accepted callback already runs in the lwIP thread, so be mindful not to call `LOCK_TCPIP_CORE()` from inside it to prevent deadlock.
+
 # Initialising struct wireguardif_peer
 Always initialise the structure with `wireguardif_peer_init()`, or with `= {0}` or designated initialisers, before setting fields. A structure declared on the stack and filled in field by field without initialisation risks containing a garbage callback pointer, which the library will call.
 
@@ -143,7 +147,7 @@ The library doesn't currently support IPv6 (neither IPv6 endpoints nor IPv6 traf
 Decrypted IPv6 packets received through the tunnel are dropped until IPv6 support is complete.
 
 # Peer reset after 9 minutes without a session
-All session keys and handshake state are wiped as per the WireGuard whitepaper (§6.3). For a peer with a configured endpoint, the endpoint also goes back to the configured address. A peer without a configured endpoint keeps the address it last learned.
+All session keys and handshake state are wiped as per the WireGuard whitepaper (§6.3). For a peer with a configured endpoint, the endpoint also goes back to the configured address. A peer without a configured endpoint keeps the address it last learned. Note that this differs from several other implementations which keeps the last learned address regardless of configured address.
 
 # More Information
 
