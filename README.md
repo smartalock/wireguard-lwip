@@ -44,6 +44,8 @@ You will need to implement a platform file that provides four functions (see wir
 - wireguard_is_under_load() - an indication of whether the system is currently under load and should generate cookie reply messages
 - wireguard_random_bytes() - a good random number generator that is able to generate random data suitable to be used as crypto keys. The example uses rand() which on POSIX systems is *not* a good choice, it is intended that you use the hardware peripheral on your platform to generate random data
 
+lwIP must currently be built with IPv6 disabled - see "IPv6 Support" below.
+
 # Handshake Replay Protection Across Restarts
 
 WireGuard protects against replayed handshake initiations using the TAI64N timestamp inside each initiation (section 5.1 of the whitepaper). There are two sides to this:
@@ -131,6 +133,14 @@ Alternatively, if your device and its peers have accurate real time clocks (Linu
     	}
     }
 
+
+# Initialising struct wireguardif_peer
+Always initialise the structure with `wireguardif_peer_init()`, or with `= {0}` or designated initialisers, before setting fields. A structure declared on the stack and filled in field by field without initialisation risks containing a garbage callback pointer, which the library will call.
+
+# IPv6 Support
+The library doesn't currently support IPv6 (neither IPv6 endpoints nor IPv6 traffic inside the tunnel), but this is planned for the future. It won't currently compile unless IPv6 is disabled: set `LWIP_IPV6=0` in your lwIP configuration (on ESP-IDF, where IPv6 is enabled by default, turn off `CONFIG_LWIP_IPV6` in menuconfig).
+
+Decrypted IPv6 packets received through the tunnel are dropped until IPv6 support is complete.
 
 # More Information
 
