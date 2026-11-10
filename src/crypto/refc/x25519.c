@@ -10,6 +10,7 @@
  */
 #include <stdint.h>
 #include "x25519.h"
+#include "../../crypto.h"
 //#include "strobe.h"
 //#include "strobe_config.h"
 // STROBE header replacement
@@ -317,6 +318,9 @@ int x25519(uint8_t out[X25519_BYTES], const uint8_t scalar[X25519_BYTES], const 
     mul((limb_t *)out, x2, z3, NLIMBS);
     int ret = canon((limb_t*)out);
 #endif
+    // Clear the ladder state from stack
+    crypto_zero(xs, sizeof(xs));
+
     if (clamp) return ret;
     else return 0;
 }

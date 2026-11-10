@@ -138,6 +138,8 @@ struct wireguard_peer {
 
 	// 5.1 Silence is a Virtue: The responder keeps track of the greatest timestamp received per peer
 	uint8_t greatest_timestamp[WIREGUARD_TAI64N_LEN];
+	// Optional - called each time a handshake initiation from this peer is accepted (same signature as wireguardif_initiation_accepted_fn)
+	void (*remote_initiation_accepted)(struct netif *netif, uint8_t peer_index);
 
 	// The active handshake that is happening
 	struct wireguard_handshake handshake;
@@ -158,6 +160,9 @@ struct wireguard_peer {
 	uint32_t last_initiation_rx;
 	// The last time we sent an initiation message to this peer
 	uint32_t last_initiation_tx;
+
+	// The time the last new secure session was created, 0 if none since the peer was last reset
+	uint32_t last_session_millis;
 
 	// last_tx and last_rx of data packets
 	uint32_t last_tx;
