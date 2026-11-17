@@ -850,7 +850,7 @@ static bool should_reset_peer(struct wireguard_peer *peer) {
 	bool result = false;
 	// 6.3 If no new secure session is created after (Reject-After-Time * 3) seconds, the current secure session, the previous secure session,
 	// and potentially the next secure session are discarded and zeroed out, in addition to any possible partially-completed handshake states and ephemeral keys
-	if ((peer->last_session_millis != 0) && wireguard_expired(peer->last_session_millis, REJECT_AFTER_TIME * 3)) {
+	if (peer->session_erase_pending && wireguard_expired(peer->last_session_millis, REJECT_AFTER_TIME * 3)) {
 		result = true;
 	}
 	return result;
@@ -877,6 +877,7 @@ static void wireguardif_tmr(void *arg) {
 				crypto_zero(&peer->handshake, sizeof(struct wireguard_handshake));
 				peer->handshake.valid = false;
 				peer->last_session_millis = 0;
+				peer->session_erase_pending = false;
 
 				// Revert back to the configured IP/port if these were altered - if there is no configured endpoint keep the learned one
 				if (!ip_addr_isany(&peer->connect_ip) && (peer->connect_port != 0)) {
