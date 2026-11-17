@@ -772,7 +772,7 @@ bool wireguard_process_cookie_message(struct wireguard_device *device, struct wi
 			peer->handshake_mac1_valid = false;
 		}
 	} else {
-		// We didn't send any initiation packet so we shouldn't be getting a cookie reply!
+		// We didn't send a handshake message so we shouldn't be getting a cookie reply!
 	}
 	return result;
 }

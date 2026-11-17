@@ -144,11 +144,11 @@ struct wireguard_peer {
 	// The active handshake that is happening
 	struct wireguard_handshake handshake;
 
-	// Decrypted cookie from the responder
+	// Decrypted cookie from the peer
 	uint32_t cookie_millis;
 	uint8_t cookie[WIREGUARD_COOKIE_LEN];
 
-	// The latest mac1 we sent with initiation
+	// The latest mac1 we sent with an initiation or response
 	bool handshake_mac1_valid;
 	uint8_t handshake_mac1[WIREGUARD_COOKIE_LEN];
 
