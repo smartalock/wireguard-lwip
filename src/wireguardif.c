@@ -412,6 +412,8 @@ static void wireguardif_send_handshake_response(struct wireguard_device *device,
 	err_t err = ERR_OK;
 
 	if (wireguard_create_handshake_response(device, peer, &packet)) {
+		memcpy(peer->handshake_mac1, packet.mac1, WIREGUARD_COOKIE_LEN);
+		peer->handshake_mac1_valid = true;
 
 		wireguard_start_session(peer, false);
 
@@ -601,8 +603,12 @@ void wireguardif_network_rx(void *arg, struct udp_pcb *pcb, struct pbuf *p, cons
 		case MESSAGE_COOKIE_REPLY:
 			msg_cookie = (struct message_cookie_reply *)data;
 			peer = peer_lookup_by_handshake(device, msg_cookie->receiver);
+			if (!peer) {
+				// A response's sender index moves into its keypair when the session starts
+				peer = peer_lookup_by_receiver(device, msg_cookie->receiver);
+			}
 			if (peer) {
-				// Process the cookie message but don't send anything out until next initiation message
+				// Store the cookie for the next handshake message without sending anything now
 				wireguard_process_cookie_message(device, peer, msg_cookie);
 			}
 			break;
