@@ -113,6 +113,7 @@ struct wireguard_allowed_ip {
 struct wireguard_peer {
 	bool valid; // Is this peer initialised?
 	bool active; // Should we be actively trying to connect?
+	bool session_erase_pending; // Has a session been created since the last peer reset?
 
 	// This is the configured IP of the peer (endpoint)
 	ip_addr_t connect_ip;
@@ -161,7 +162,7 @@ struct wireguard_peer {
 	// The last time we sent an initiation message to this peer
 	uint32_t last_initiation_tx;
 
-	// The time the last new secure session was created, 0 if none since the peer was last reset
+	// The time the last new secure session was created; zero is a valid clock value
 	uint32_t last_session_millis;
 
 	// last_tx and last_rx of data packets
